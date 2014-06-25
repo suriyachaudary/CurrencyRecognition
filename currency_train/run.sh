@@ -4,8 +4,8 @@
 
 rm -r currency_train_output;
 
-vocabSize=2000;
-numImagesToTrain=50;
+vocabSize=10000;
+numImagesToTrain=500;
 
 mkdir train_files;
 mkdir keypoints;
