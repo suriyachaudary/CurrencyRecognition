@@ -12,15 +12,20 @@
 using namespace cv;
 using namespace std;
 
-SiftFeatureDetector detector( 500 );
+SiftFeatureDetector detector( MAXIMAL_KEYPOINTS );
 SiftDescriptorExtractor extract;
 
+struct invertedIndex
+{
+  vector<int> imgIndex;
+  vector<float> weightedHistValue;
+};
 
 Mat extractSift(char *pathToTxtFile, const int numImagesToTrain)
 {
     /**
     *  This function reads the first 'numImagesToTrain' images whose paths are given in text files. The image read is resized to a standard size.
-    *  The keypoints are detected using SiftFeatureDetector( 500 ) and described using SiftDescriptorExtractor. 
+    *  The keypoints are detected using SiftFeatureDetector( MAXIMAL_KEYPOINTS ) and described using SiftDescriptorExtractor. 
     *  A Mat of size NumberofFeatures x FeatureDimensions is returned. Using SIFT, this function returns a Mat of size NumberofFeatures x 128.
     *
     *  Parameter: #  pathToTxtFile - path to a directory which contains text files. Each text file corresponds to one class and contains path to images.
@@ -107,10 +112,11 @@ Mat kMeansCluster(Mat &data,int clusterSize)
     int nAttempts=3;
     int flags=KMEANS_PP_CENTERS;
   
-    Mat clusterCenters;
-    kmeans(data, clusterSize, Mat(), termCriteria, nAttempts, flags, clusterCenters);
+    Mat clusterCenters, temp;
+    kmeans(data, clusterSize, temp, termCriteria, nAttempts, flags, clusterCenters);
     clusterCenters.convertTo(clusterCenters,CV_8U);
-  
+    printf("here\n");
+      
     return clusterCenters;
 }
 
@@ -137,8 +143,8 @@ void writeToYMLFile(Mat &dataToWrite, char *fileName)
     /**
     *  writes the data to the .yml file.
     *
-    *  Parameters: * dataToWrite - matrix to write in .yml file.
-    *              * fileName - name of yml file.
+    *  Parameters: # dataToWrite - matrix to write in .yml file.
+    *              # fileName - name of yml file.
     **/
   
     char ymlFileName[100];
@@ -156,16 +162,14 @@ void writeToBinaryFile(Mat &dataToWrite , char *fileName)
     /**
     *  writes the data to the .bin file .
     *  
-    *  Parameters: * dataToWrite - matrix to write in binbary file. Type CV_8UC1.
-    *              * fileName - name of binary file.
+    *  Parameters: # dataToWrite - matrix to write in binbary file. Type CV_8UC1.
+    *              # fileName - name of binary file.
     **/
   
-    char binaryFileName[200];
-    sprintf(binaryFileName,"%s.bin",fileName);
-    fstream binaryFile(binaryFileName,ios::binary|ios::out);
+    fstream binaryFile(fileName,ios::binary|ios::out);
     if(!binaryFile.is_open())
     {
-        printf("\nerror in opening: %s",binaryFileName);
+        printf("\nerror in opening: %s", fileName);
         return;
     }
 
@@ -184,11 +188,11 @@ Mat getBowHist(Mat &vocabulary,char *pathToTxtFile, const int numImagesToTrain)
     *  3. It also writes location of keypoints of each image into ($imgIndex).txt . Each line in this file is a 3-tuple (vocab-id, x, y) where 
     *     keypoint at location (x,y) in image $imgIndex has been assigned to visual word 'vocab-id'.
     *  
-    *  Parameters: * vocabulary- visual words. Size ClusterSizex128, type CV_8UC1.
-    *              * pathToTxtFile - path to a directory which contains text files. Each text file corresponds to one class and contains path to images.
-    *              * numImagesToTrain - Maximal number of images to read from each txt files. First 'numImagesToTrain' many images are read.
+    *  Parameters: # vocabulary- visual words. Size ClusterSizex128, type CV_8UC1.
+    *              # pathToTxtFile - path to a directory which contains text files. Each text file corresponds to one class and contains path to images.
+    *              # numImagesToTrain - Maximal number of images to read from each txt files. First 'numImagesToTrain' many images are read.
     **/
-    
+
     if(DISPLAY)
     {
         namedWindow("img", WINDOW_NORMAL );
@@ -290,5 +294,121 @@ Mat getBowHist(Mat &vocabulary,char *pathToTxtFile, const int numImagesToTrain)
 
     fclose(labelFilePointer);     
     return allHist; 
+}
+
+Mat tfIdfWeighting(Mat &allHist)
+{
+    /**
+    *  This function perform 'term frequency-inverse document frequency' (tf-idf) weighting.
+    *  It returns a Mat of size allHist.rows x allHist.cols and type CV_32FC1.
+    *
+    *  Parameter: # allHist- contains the histogram of all images. Type CV_32FC1.
+    **/
+  
+    Mat weightedAllHist= Mat::zeros(allHist.rows, allHist.cols, CV_32F);
+
+    int *numImagesInDb = new int[allHist.cols];
+    for(int j=0;j<allHist.cols;j++)
+    {
+        numImagesInDb[j]=0;
+    }
+  
+    for(int i=0;i<allHist.rows;i++) 
+    {
+        for(int j=0;j<allHist.cols;j++)
+        {
+            if(allHist.at<float>(i,j)>0) 
+            {
+                numImagesInDb[j]=numImagesInDb[j] + 1;
+            }
+        }
+    }  
+  
+    for(int i=0;i<allHist.rows;i++)
+    { 
+        for(int j=0;j<allHist.cols;j++)
+        {
+            if(numImagesInDb[j] > 0)
+            { 
+                weightedAllHist.at<float>(i,j)=allHist.at<float>(i,j)*log(((float)(allHist.rows))/numImagesInDb[j]);
+            } 
+            else
+            {
+                weightedAllHist.at<float>(i,j)=allHist.at<float>(i,j);
+            }
+        }
+    } 
+  
+  delete[] numImagesInDb;
+  
+  return   weightedAllHist;
+}
+
+vector<invertedIndex> getInvertedIndex(Mat weightedAllHist)
+{
+  /**
+  *  Create an inverted index from weightedAllHist. Each element in invertedIndex corresponds to a visual word.
+  *  Each invertedIndex i contains variable number of 2-tuple (imgIndex, tf-idf value) where imgIndex and tf-idf value is weightedAllHist[imgIndex][i].  
+  *  This is a compact representation of the weighted BOW histogram.
+  *  It returns a vector of structure of type invertedIndex.
+  *  The function also write size of each invertedIndex into a text file indicesSize.txt
+  *  
+  *  Parameter: # weightedAllHist- tf-idf weighted BOW histogram of each training image.
+  **/
+  
+  vector<invertedIndex> allIndex;
+  FILE *indicesSizeFilePointer=fopen("indicesSize.txt","w");
+  
+  for(int i=0;i<weightedAllHist.cols;i++)
+  {
+    invertedIndex tempIndex;
+    for(int j=0;j<weightedAllHist.rows;j++)
+    {
+      if(weightedAllHist.at<float>(j,i)>0)
+      {
+        tempIndex.imgIndex.push_back(j);
+        tempIndex.weightedHistValue.push_back(weightedAllHist.at<float>(j,i));
+      }
+    } 
+    
+    allIndex.push_back(tempIndex);
+    
+    fprintf(indicesSizeFilePointer,"%d\n",tempIndex.imgIndex.size() );
+  }
+  
+  fclose(indicesSizeFilePointer);
+  
+  return allIndex;    
+}
+
+void writeToBinaryFile(vector<invertedIndex> allIndex , char *fileName)
+{
+    /**
+    *  writes the inverted index into binary file
+    *
+    *  Parameter: * allIndex- vector of invertedIndex type to write in .bin file.
+    *             * fileToWrite- name of file to which vector is to write in .bin file  
+    **/
+
+    fstream binaryFile(fileName, ios::out | ios::binary);
+    if(!binaryFile.is_open())
+    {
+        printf("\nerror in opening: %s", fileName);
+        return;
+    }
+
+    for(int i=0;i<allIndex.size();i++)
+    {
+     
+        for(int j=0;j<allIndex[i].imgIndex.size();j++)
+        {
+            int a = allIndex[i].imgIndex[j];
+            float b = allIndex[i].weightedHistValue[j];
+            binaryFile.write((char *)&a,4) ;
+            binaryFile.write((char *)&b,4) ;
+        }
+    }
+  
+  binaryFile.close();
 }
 

@@ -36,38 +36,49 @@ int main(int argc,char **argv)
     }
   
     printf("\nWriting Vocabulary to the binary file");
-    writeToBinaryFile(vocabulary, (char *)"vocabulary");
+    writeToBinaryFile(vocabulary, (char *)"vocabulary.bin");
     
 
-    vocabulary.convertTo(vocabulary,CV_32F);                //convert vocabulary fron CV_8U to CV_32F
-  
-  /********** get Histogram of visual words ********************/
-  printf("\nHistogram of vocabulary words");
-  Mat allHist=getBowHist(vocabulary,argv[1]);
-  
-  printf("\nWriting Histogram of vocabulary words to YML file");
-  writeToYMLFile(allHist,(char *)"allHist");
-  
-  // /******************** Weighted Histogram of allHist ********************/
-  // printf("\n Weighted Histogram");
-  // Mat weightedAllHist=tfIdfWeighting(allHist);
-  
-  // /******************** perform inverted index ********************/
-  // printf("\n Indexing");
-  // vector<invertedIndex> allIndex = getInvertedIndex(weightedAllHist);
-  // printf("\n Total inverted indices = %d", allIndex.size());
-  // printf("\n writing to the inverted index file");
-  // writeToBinaryFile(allIndex,(char *)"allIndex");
     
-  // /********************  write total num of train images(weightedAllHist.rows) and vocabSize to dataFile ********************/
-  // FILE *filePointer=fopen("dataFile.txt","w");
-  // if(filePointer==NULL)
-  // {
-  //   printf("\n data File  not found");
-  // }
-  // fprintf(filePointer,"%d\n%d",weightedAllHist.rows,vocabSize);
-  // fclose(filePointer);
-  // printf("\n ********************finish********************");
-  return 0;
+  
+    /********** get BOW histogram for each image ********************/
+    printf("\ngetting BOW histogram for each image");
+    Mat allHist=getBowHist(vocabulary, argv[1], numImagesToTrain);
+    
+    vocabulary.release();
+
+    /******************** Weighted Histogram of allHist ********************/
+    printf("\ntf-idf scoring");
+    Mat weightedAllHist=tfIdfWeighting(allHist);
+    
+    allHist.release();
+
+    if(writeToYML)
+    {
+        printf("\nWriting tf-idf weighted BOW histogram for each image to YML file");
+        writeToYMLFile(weightedAllHist,(char *)"weightedAllHist");
+    }
+
+  
+    /******************** perform inverted index ********************/
+    printf("\nGetting inverted index");
+    vector<invertedIndex> allIndex = getInvertedIndex(weightedAllHist);
+    printf("\nTotal inverted indices = %d", allIndex.size());
+    printf("\nWriting inverted index to binary file");
+    writeToBinaryFile(allIndex,(char *)"allIndex.bin");
+    
+    /********************  write total num of train images and vocabSize to data file ********************/
+    printf("\nWrite total num of train images and vocabSize to data file");
+    FILE *filePointer=fopen("dataFile.txt","w");
+    if(filePointer==NULL)
+    {
+        printf("\nCouldn't open 'datafile.txt'");
+        return 0;
+    }
+
+    fprintf(filePointer,"%d\n%d", weightedAllHist.rows, vocabSize);
+    fclose(filePointer);
+    printf("\n\n********************finish********************\n\n");
+    return 0;
 }
 
