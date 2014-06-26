@@ -27,6 +27,7 @@ int main(int argc,char **argv)
     Mat vocabulary=hiKMeansCluster(siftFeature,vocabSize);
     
     printf("\nClustering done : %d", vocabulary.rows);
+    siftFeature.release();
   
     /******************** write vocabulary to .yml and .bin file ********************/
     if(writeToYML)
@@ -63,6 +64,7 @@ int main(int argc,char **argv)
     /******************** perform inverted index ********************/
     printf("\nGetting inverted index");
     vector<invertedIndex> allIndex = getInvertedIndex(weightedAllHist);
+    weightedAllHist.release();
     printf("\nTotal inverted indices = %d", allIndex.size());
     printf("\nWriting inverted index to binary file");
     writeToBinaryFile(allIndex,(char *)"allIndex.bin");

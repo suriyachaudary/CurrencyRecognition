@@ -12,14 +12,7 @@
 using namespace cv;
 using namespace std;
 
-SiftFeatureDetector detector( MAXIMAL_KEYPOINTS );
-SiftDescriptorExtractor extract;
 
-struct invertedIndex
-{
-  vector<int> imgIndex;
-  vector<float> weightedHistValue;
-};
 
 Mat extractSift(char *pathToTxtFile, const int numImagesToTrain)
 {
@@ -38,8 +31,6 @@ Mat extractSift(char *pathToTxtFile, const int numImagesToTrain)
     }
 
     Mat siftFeature;
-
-    char txtFiles[6][30] = {"ten", "twenty", "fifty", "hundred", "fivehundred", "thousand"};
 
     int imgCounter=0;
     
@@ -130,7 +121,7 @@ Mat hiKMeansCluster(Mat &data,int clusterSize)
     **/
     
     Mat clusterCenters=Mat(clusterSize,data.cols,CV_32F);
-    cvflann::KMeansIndexParams kParams = cvflann::KMeansIndexParams(2,100*clusterSize, cvflann::FLANN_CENTERS_KMEANSPP,0.2);
+    cvflann::KMeansIndexParams kParams = cvflann::KMeansIndexParams(2, 500*clusterSize, cvflann::FLANN_CENTERS_KMEANSPP,0.2);
     int numClusters =cv::flann::hierarchicalClustering<cvflann::L2<float> >(data, clusterCenters, kParams);
     clusterCenters = clusterCenters.rowRange(cv::Range(0,numClusters));
     clusterCenters.convertTo(clusterCenters,CV_8U);
@@ -215,8 +206,6 @@ Mat getBowHist(Mat &vocabulary,char *pathToTxtFile, const int numImagesToTrain)
         printf("\nERROR..!! Couldn't open 'Labels.txt'");
         return Mat();
     }
-  
-    char txtFiles[6][30]={"ten","twenty","fifty","hundred","fivehundred","thousand"};
   
     for(int i=0;i<6;i++)
     { 
@@ -346,39 +335,39 @@ Mat tfIdfWeighting(Mat &allHist)
 
 vector<invertedIndex> getInvertedIndex(Mat weightedAllHist)
 {
-  /**
-  *  Create an inverted index from weightedAllHist. Each element in invertedIndex corresponds to a visual word.
-  *  Each invertedIndex i contains variable number of 2-tuple (imgIndex, tf-idf value) where imgIndex and tf-idf value is weightedAllHist[imgIndex][i].  
-  *  This is a compact representation of the weighted BOW histogram.
-  *  It returns a vector of structure of type invertedIndex.
-  *  The function also write size of each invertedIndex into a text file indicesSize.txt
-  *  
-  *  Parameter: # weightedAllHist- tf-idf weighted BOW histogram of each training image.
-  **/
+    /**
+    *  Create an inverted index from weightedAllHist. Each element in invertedIndex corresponds to a visual word.
+    *  Each invertedIndex i contains variable number of 2-tuple (imgIndex, tf-idf value) where imgIndex and tf-idf value is weightedAllHist[imgIndex][i].  
+    *  This is a compact representation of the weighted BOW histogram.
+    *  It returns a vector of structure of type invertedIndex.
+    *  The function also write size of each invertedIndex into a text file indicesSize.txt
+    *  
+    *  Parameter: # weightedAllHist- tf-idf weighted BOW histogram of each training image.
+    **/
   
-  vector<invertedIndex> allIndex;
-  FILE *indicesSizeFilePointer=fopen("indicesSize.txt","w");
+    vector<invertedIndex> allIndex;
+    FILE *indicesSizeFilePointer=fopen("indicesSize.txt","w");
   
-  for(int i=0;i<weightedAllHist.cols;i++)
-  {
-    invertedIndex tempIndex;
-    for(int j=0;j<weightedAllHist.rows;j++)
+    for(int i=0;i<weightedAllHist.cols;i++)
     {
-      if(weightedAllHist.at<float>(j,i)>0)
-      {
-        tempIndex.imgIndex.push_back(j);
-        tempIndex.weightedHistValue.push_back(weightedAllHist.at<float>(j,i));
-      }
-    } 
+        invertedIndex tempIndex;
+        for(int j=0;j<weightedAllHist.rows;j++)
+        {
+            if(weightedAllHist.at<float>(j,i)>0)
+            { 
+                tempIndex.imgIndex.push_back(j);
+                tempIndex.weightedHistValue.push_back(weightedAllHist.at<float>(j,i));
+            }
+        } 
     
-    allIndex.push_back(tempIndex);
+        allIndex.push_back(tempIndex);
     
-    fprintf(indicesSizeFilePointer,"%d\n",tempIndex.imgIndex.size() );
-  }
+        fprintf(indicesSizeFilePointer,"%d\n",tempIndex.imgIndex.size() );
+    }
   
-  fclose(indicesSizeFilePointer);
+    fclose(indicesSizeFilePointer);
   
-  return allIndex;    
+    return allIndex;    
 }
 
 void writeToBinaryFile(vector<invertedIndex> allIndex , char *fileName)

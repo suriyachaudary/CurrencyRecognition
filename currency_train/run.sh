@@ -2,14 +2,24 @@
 # This script compile and run currency-train program. This script creates temporary text files containing path to images for each class.
 # The script expects path to directory containing training set. Images belonging to same class should be in same directory in the training set.
 
-rm -r currency_train_output;
-
 vocabSize=10000;
 numImagesToTrain=500;
 
-mkdir train_files;
-mkdir keypoints;
-mkdir currency_train_output;
+if [ -d "currency_train_output" ]; then
+	rm -r currency_train_output;
+fi
+
+if [ ! -d "train_files" ]; then
+	mkdir train_files;  
+fi
+
+if [ ! -d "keypoints" ]; then
+	mkdir keypoints;  
+fi
+
+if [ ! -d "currency_train_output" ]; then
+	mkdir currency_train_output;  
+fi
 
 for f in $1/ten/*.jpg; do echo $f;done > train_files/ten.txt
 for f in $1/twenty/*.jpg; do echo $f;done > train_files/twenty.txt
