@@ -1,4 +1,4 @@
-#include "train_utils.cpp"
+#include "train_BOW_IR_utils.cpp"
 
 using namespace cv;
 using namespace std;
@@ -22,6 +22,7 @@ int main(int argc,char **argv)
   
     /******************** cluster the features ********************/
     printf("\nClustering start");
+    printf("\n");
     
     // Mat vocabulary=kMeansCluster(siftFeature, vocabSize);
     Mat vocabulary=hiKMeansCluster(siftFeature,vocabSize);
