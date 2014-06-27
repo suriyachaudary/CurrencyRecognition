@@ -302,10 +302,11 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
             printf("\nFile %s not found", keyPointsFile);
             break;
         }
-    
+        
+        int vocabularyId=-1,x=-1,y=-1;
+                
         for(int j=0;j<pointIdxsOfClusters.size();j++)
         {    
-            fseek ( keyPointsFilePointer , 0 , SEEK_SET );
 
             for(int k=0;k<pointIdxsOfClusters[j].size();k++)
             {
@@ -317,16 +318,9 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
                 Mat temp=Mat(1,2,CV_32F);
                 temp.at<float>(0,0)=keypoints[pointIdxsOfClusters[j][k]].pt.x;
                 temp.at<float>(0,1)=keypoints[pointIdxsOfClusters[j][k]].pt.y;
-                int vocabularyId=-1,x=-1,y=-1;
+                
                 while(!feof(keyPointsFilePointer))
                 {
-                    fscanf(keyPointsFilePointer,"%d%d%d",&vocabularyId,&x,&y); 
-          
-                    if(vocabularyId>j)
-                    {
-                        break;
-                    }   
-          
                     if(vocabularyId==j)
                     {
                         Mat temp2=Mat(1,2,CV_32F);
@@ -336,6 +330,13 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
                         pointInRetreivedImg.push_back(temp2);
                         break;
                     }
+
+                    if(vocabularyId>j)
+                    {
+                        break;
+                    }   
+
+                    fscanf(keyPointsFilePointer,"%d%d%d",&vocabularyId,&x,&y); 
                 }
                 
                 if(vocabularyId>j)
@@ -343,7 +344,6 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
                     break;
                 }
             }
-            
         }
         fclose(keyPointsFilePointer);
    
@@ -353,7 +353,7 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
             findFundamentalMat(pointInTestImg,pointInRetreivedImg,FM_RANSAC,3.0,0.99, out );
             for(int j=0;j<out.rows;j++)
             {
-                geoScore[i] = geoScore[i] +out.at<uchar>(j,0);//calculate score
+                geoScore[i] = geoScore[i] +out.at<uchar>(j,0);
             }
         }
     }  
