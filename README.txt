@@ -1,3 +1,9 @@
+This code is implementation of the paper : 
+Suriya Singh, Shushman Choudhury, Kumar Vishal and C.V. Jawahar. "Currency Recognition on Mobile Phones". Proceedings of the 22nd International Conference on Pattern Recognition, 24-28 Aug 2014, Stockholm, Sweden. 
+
+Project Page : http://researchweb.iiit.ac.in/~suriya.singh/Currency2014ICPR/Currency2014ICPR.html
+
+
 The code is divided into 2 parts
     
 1. Training code - This code can be used to obtain necessary files for instance retrieval :
