@@ -11,6 +11,7 @@ int main(int argc,char **argv)
     Mat siftFeature;
     const int vocabSize = (int)strtol(argv[2], NULL, 0);
     const int numImagesToTrain = (int)strtol(argv[3], NULL, 0);
+    int numImages=0;
   
     printf("\nvocabSize selected : %d", vocabSize);
     printf("\nMaximal number of images form each class to be used for training : %d", numImagesToTrain);
@@ -40,8 +41,6 @@ int main(int argc,char **argv)
     printf("\nWriting Vocabulary to the binary file");
     writeToBinaryFile(vocabulary, (char *)"vocabulary.bin");
     
-
-    
   
     /********** get BOW histogram for each image ********************/
     printf("\ngetting BOW histogram for each image");
@@ -52,7 +51,7 @@ int main(int argc,char **argv)
     /******************** Weighted Histogram of allHist ********************/
     printf("\ntf-idf scoring");
     Mat weightedAllHist=tfIdfWeighting(allHist);
-    
+    numImages = weightedAllHist.rows;
     allHist.release();
 
     if(writeToYML)
@@ -79,7 +78,7 @@ int main(int argc,char **argv)
         return 0;
     }
 
-    fprintf(filePointer,"%d\n%d", weightedAllHist.rows, vocabSize);
+    fprintf(filePointer,"%d\n%d", numImages, vocabSize);
     fclose(filePointer);
     printf("\n\n********************finish********************\n\n");
     return 0;

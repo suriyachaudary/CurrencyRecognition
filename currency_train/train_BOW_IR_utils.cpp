@@ -64,7 +64,7 @@ Mat extractSift(char *pathToTxtFile, const int numImagesToTrain)
   
             if(img.cols>WIDTH)
             {
-                resize(img,img,Size(WIDTH,img.rows*WIDTH/img.cols));
+                resize(img,img,Size((int)WIDTH,(int)(img.rows*WIDTH/img.cols)));
             }
 
             if(DISPLAY)
@@ -121,7 +121,7 @@ Mat hiKMeansCluster(Mat &data,int clusterSize)
     **/
     
     Mat clusterCenters=Mat(clusterSize,data.cols,CV_32F);
-    cvflann::KMeansIndexParams kParams = cvflann::KMeansIndexParams(2, 500*clusterSize, cvflann::FLANN_CENTERS_KMEANSPP,0.2);
+    cvflann::KMeansIndexParams kParams = cvflann::KMeansIndexParams(2, 100*clusterSize, cvflann::FLANN_CENTERS_KMEANSPP,0.2);
     int numClusters =cv::flann::hierarchicalClustering<cvflann::L2<float> >(data, clusterCenters, kParams);
     clusterCenters = clusterCenters.rowRange(cv::Range(0,numClusters));
     clusterCenters.convertTo(clusterCenters,CV_8U);
@@ -240,7 +240,7 @@ Mat getBowHist(Mat &vocabulary,char *pathToTxtFile, const int numImagesToTrain)
   
             if(img.cols>WIDTH)
             {
-                resize(img,img,Size(WIDTH,img.rows*WIDTH/img.cols));
+                 resize(img,img,Size((int)WIDTH,(int)(img.rows*WIDTH/img.cols)));
             }
 
             if(DISPLAY)

@@ -6,6 +6,7 @@ const bool writeToYML = 0;
 const char KEYPOINTS_DIRECTORY[50] = "keypoints";
 
 const float WIDTH = 480.0;
+const float TEST_WIDTH = 640.0;
 const int MAXIMAL_KEYPOINTS = 500;
 const char txtFiles[6][30] = {"ten", "twenty", "fifty", "hundred", "fivehundred", "thousand"};
 

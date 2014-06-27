@@ -2,7 +2,7 @@
 # This script compile and run currency-train program. This script creates temporary text files containing path to images for each class.
 # The script expects path to directory containing training set. Images belonging to same class should be in same directory in the training set.
 
-vocabSize=10000;
+vocabSize=2000;
 numImagesToTrain=500;
 
 if [ -d "currency_train_output" ]; then
