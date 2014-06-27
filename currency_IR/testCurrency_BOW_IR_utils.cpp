@@ -271,38 +271,35 @@ void retrieveTopKImages(float dotProduct[],const int topKValue,const int numOfTr
     }   
 }
 
-void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,vector<vector<int> > pointIdxsOfClusters,vector<KeyPoint> keyPoints,char  *keyPointsPath,int geoScore[])
+void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,vector<vector<int> > &pointIdxsOfClusters,vector<KeyPoint> &keypoints,char  *keyPointsPath,int geoScore[])
 {
     /** 
-    *  perform reranking of indices using geometry verification.It reads k number of file which are top k retrieved indices 
-    *  named file presents in keypoints directory.pointIdxsOfClusters.size() is the size of indices of keypoints that belong to the cluster.
-    *  The x and y values of indices of keypoints is stored in temp, and after checking the condition temp is stored in pointInTestImg and
-    *  Mat temp2 is created if vocabularyId and j are equal then x and y values of indices of keypoints is stored in temp2.temp2 is pushed 
-    *  to pointInRetrievedImg. If matches(poinInTestImg.rows) is greater than 4 then fundamentalMat is created using findFundamentalMat()
-    *  function which takes pointInTestImg,pointInRetreivedImg,FM_RANSAC,3.0,0.99, geo as an argument. 
+    *  Rerank the retrieved images based on geometric verification. Geometric verification is carried out by fitting fundamental matrix
+    *  using keypoints that have been assigned to same visual word as correspondences.
+    *  The keypoint location of of retrieved images are read from text files.
     *  
-    *  Parameters: * retrievedImages[]- array which contains the indices of top K dotProduct values.
-    *              * topKValue- number of top values to be considered.
-    *              * pointIdxsOfClusters-  indices of keypoints that belong to the cluster.
-    *              * keyPoints- interesting points on the object can be extracted to provide a "feature description" of the object.
-    *              * keyPointsPath- directory  which contains number of  imgcounts file.
-    *              * geoScore[]- array to which calculated score is stored.
+    *  Parameters: * retrievedImages[]- indices of images corrsponding to highest K dotProduct values.
+    *              * topKValue- number of images retrieve\d for geometric verification.
+    *              * pointIdxsOfClusters-  vocabulary assignment details for each keypoints of test images.
+    *              * keypoints- keypoints of test images.
+    *              * keyPointsPath- path to directory that contains keypoint location of training images.
+    *              * geoScore[]- array to which calculated score is stored. This score is number of keypoints in retreived images that are geometrically consistent with test image.
     **/   
   
-    for(int i=0;i<topKValue;i++)
+    for(int i=0; i<topKValue; i++)
     { 
         geoScore[i]=0;
         Mat pointInTestImg, pointInRetreivedImg;
         char keyPointsFile[200];
         sprintf(keyPointsFile,"%s/%d.txt",keyPointsPath,retrievedImages[i]);
-        printf("\n keyPointsFilename=%s",keyPointsFile);
+
         FILE *keyPointsFilePointer;
         keyPointsFilePointer= fopen(keyPointsFile,"r");
         int vocabularyId=-1,x=-1,y=-1;
         
         if(keyPointsFilePointer==NULL)
         {
-            printf("\n File %d not found",retrievedImages[i]);
+            printf("\nFile %s not found", keyPointsFile);
             break;
         }
     
@@ -316,25 +313,25 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
 	                break;
 	            }
 	           Mat temp=Mat(1,2,CV_32F);
-               temp.at<float>(0,0)=keyPoints[pointIdxsOfClusters[j][k]].pt.x;
-               temp.at<float>(0,1)=keyPoints[pointIdxsOfClusters[j][k]].pt.y;
+               temp.at<float>(0,0)=keypoints[pointIdxsOfClusters[j][k]].pt.x;
+               temp.at<float>(0,1)=keypoints[pointIdxsOfClusters[j][k]].pt.y;
                while(!feof(keyPointsFilePointer))
                {
-                  fscanf(keyPointsFilePointer,"%d\t%d\t%d",&vocabularyId,&x,&y); 
+                    fscanf(keyPointsFilePointer,"%d\t%d\t%d",&vocabularyId,&x,&y); 
           
-                  if(vocabularyId>j)
-                  {
-                    break;
-                  }   
+                    if(vocabularyId>j)
+                    {
+                        break;
+                    }   
           
-                  if(vocabularyId==j)
+                    if(vocabularyId==j)
                     {
                         Mat temp2=Mat(1,2,CV_32F);
                         temp2.at<float>(0,0)=x;
                         temp2.at<float>(0,1)=y;
                         pointInTestImg.push_back(temp);
                         pointInRetreivedImg.push_back(temp2);
-                        break;
+                        // break;
                     }
                 }
             }
@@ -353,33 +350,33 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
     }  
 }
 
-void getVote(int geoScore[],int topKValue,int labels[],int retrievedImages[],int vote[])
+void getVote(int geoScore[], int topKValue, int labels[], int retrievedImages[], int vote[])
 {
     /** 
-    *  calculates number of votes obtained  for each label using geoScore value obtained from rerankingUsingGeometricVerification and 
-    *   it is returned to identify label.
+    *  calculates number of votes for each class using score from geometric verification of each retrieved image
     *  
-    *  Parameters: * geoScore[]- contains score value of top K indices.
-    *              * topKValue- number of top values to be considered.
-    *              * labels[]- array in which label of each train image is stored.
-    *              * retrievedImages[]- array in which top K indices is stored.
-    *              * vote- array in which vote of each label is stored.
+    *  Parameters: # geoScore[]- score from geometric verification of each retrieved image.
+    *              # topKValue- number of images to retrieve for geo-metric verification.
+    *              # labels[]- annotations of training images
+    *              # retrievedImages[]- indices of images corrsponding to highest K dotProduct values.
+    *              # vote- vote for each class.
     **/
  
     for(int i=0;i<6;i++)
         vote[i]=0;
    
     for(int i=0;i<topKValue;i++)
+    {
         vote[labels[retrievedImages[i]]] = vote[labels[retrievedImages[i]]] + geoScore[i];
+    }
 }
  
 int argmax(int array[])
 {
     /** 
-    *  identifies index which takes highest vote value and it returns the index value to the label in  test function.
-    *   
-    *  Parameters: * array[]- vote array is passed to identify the index which is having highest vote.
-    **/   
+    *   implement argmax
+    *
+    **/ 
   
     int k = 0;
     int max = array[k];
@@ -392,7 +389,7 @@ int argmax(int array[])
         }
     }
   
-  return k;
+    return k;
 }
 
 int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int labels[], char *keyPointsPath, const int numOfTrainImg, const int topKValue)
@@ -481,8 +478,11 @@ int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int label
         printf("\nIndices=%d", retrievedImages[i]);
   
     /******************* Rerank using geometric verification **********************/
+    clo = clock();
     int *geoScore = new int[topKValue];
     rerankUsingGeometryVerification(retrievedImages,topKValue, pointIdxsOfClusters, keypoints_removed, keyPointsPath, geoScore);
+    printf("\ngeo Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+
     for(int i=0;i<topKValue;i++)
         printf("\nScore=%d", geoScore[i]);
  
@@ -550,6 +550,7 @@ void readFiles(char *pathToTxtFile, vector<invertedIndex> &allIndex, int labels[
                 numCorrect++;
 
             imgCounter++;
+            printf("\nAccuracy = %f", (float)numCorrect/imgCounter);
         }
     }     
 
