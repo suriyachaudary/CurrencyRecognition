@@ -14,7 +14,7 @@ for f in $2/fivehundred/*.jpg; do echo $f;done > train_files/fivehundred.txt
 for f in $2/thousand/*.jpg; do echo $f;done > train_files/thousand.txt
 
 g++ `pkg-config --cflags --libs opencv` testCurrency.cpp -o currency-test -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_objdetect -lopencv_nonfree -lopencv_features2d -lopencv_flann -lopencv_calib3d;
-./currency-test $1/dataFile.txt $1/vocabulary.bin $1/labels.txt $1/indicesSize.txt $1/allIndex.bin $topKValue
+./currency-test $1/dataFile.txt $1/vocabulary.bin $1/labels.txt $1/indicesSize.txt $1/allIndex.bin $topKValue $1/keypoints/ train_files/
 
 rm -r train_files;
 rm currency-test;

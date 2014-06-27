@@ -6,7 +6,7 @@ int main(int argc,char **argv)
 {
 
     /******************** read data file containing number of images used for training and vocabSize ********************/
-
+    int clo = clock();
     int numOfTrainImg;
     int vocabSize;
     FILE *datafilePointer=fopen(argv[1],"r");
@@ -25,7 +25,7 @@ int main(int argc,char **argv)
    
     /******************** read vocabulary from file ********************/
 
-      Mat vocabulary=readVocab(argv[2], (const int)vocabSize);
+    Mat vocabulary=readVocab(argv[2], (const int)vocabSize);
     printf("\nRead vocabulary : %dx%d", vocabulary.rows, vocabulary.cols);
 
     setVocabulary(vocabulary);
@@ -56,10 +56,13 @@ int main(int argc,char **argv)
     printf("\nVocabulary size  : %dx%d", vocabulary.rows, vocabulary.cols);
     printf("\nNumber of images used for training : %d", numOfTrainImg);
     printf("\nNumber of images to retrieve for geo-metric verification : %d", topKValue);
-  
+    printf("\nTotal time to read data : %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
     /******************** identifying labels ********************/
-    // readFiles(argv[5], allIndex, labels, argv[6],numOfTrainImg,topKValue);
-   
+    readFiles(argv[8], allIndex, labels, argv[7], (const int)numOfTrainImg, (const int)topKValue);
+    
+    delete[] labels;
+    delete[] indicesSize;
+
     printf("\n\n********************finish********************\n\n");
       
   return 0;

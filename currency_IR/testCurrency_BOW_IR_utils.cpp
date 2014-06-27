@@ -8,8 +8,6 @@
 using namespace cv;
 using namespace std;
 
-#define numOfTestImgs 509
-
 
 BOWImgDescriptorExtractor bowDE(new SiftDescriptorExtractor(),new FlannBasedMatcher());
 
@@ -131,12 +129,12 @@ vector<invertedIndex> readInvertedIndex(char *allIndexFile,int indicesSize[], co
     return allIndex; 
 }
 
-Mat grabcutSegmentation(Mat input)
+Mat grabcutSegmentation(Mat &input)
 {
     /**
-    *  implements the grabcut algorithm.It takes image as an argument and it return mask. 
+    *  implements the grabcut algorithm. It takes BGR image as an argument and it return binary mask. 
     *
-    *  Parameter: * img- image to be segmented.
+    *  Parameter: # input- image to be segmented.
     **/
   
     Mat img;
@@ -166,26 +164,27 @@ Mat grabcutSegmentation(Mat input)
     {
         grabCut(img, mask,rectangle,bgModel,fgModel,1,GC_INIT_WITH_MASK );
     }
+
     else
     {
-        for(int i=0;i<mask.rows;i++)
+        for(int i=0.2*mask.rows;i<0.8*mask.rows;i++)
         {
-            for(int j=0;j<mask.cols;j++)
+            for(int j=0.2*mask.cols;j<0.8*mask.cols;j++)
             {
-                if(i>0.2*mask.rows && i<0.8*mask.rows)
-                {
-                    if(j>0.2*mask.cols && j<0.8*mask.cols)
-                    {
-                        mask.at<uchar>(i,j)=3;
-                    }
-                }
+                mask.at<uchar>(i,j)=3;
             }
         }
     }
     
     cv::compare(mask,cv::GC_PR_FGD,mask,cv::CMP_EQ);
-    resize(mask,mask,Size(input.cols,input.rows),0,0,CV_INTER_LINEAR); 
-  
+    resize(mask,mask,input.size(),0,0,CV_INTER_LINEAR); 
+    if(DISPLAY)
+    {
+        Mat out;
+        input.copyTo(out, mask);
+        imshow("img", out) ;
+        waitKey(1);    
+    }
     return mask;
 }
 
@@ -208,15 +207,14 @@ vector<KeyPoint> removeKeyPoints(Mat mask,vector<KeyPoint> keyPoints)
     return tempKeyPoints;  
 }
 
-void getDotProduct(vector<invertedIndex> allIndex,Mat imgHistogram,const int numOfTrainImg,float dotProduct[])
+void getDotProduct(vector<invertedIndex> &allIndex, Mat &imgHistogram, const int numOfTrainImg, float dotProduct[])
 {
     /** 
-    *  performs dot product between imgHistogram which is computed output image descriptor which takes cols as clusterSize 
-    *  and weightedHistogram value for each image index and it returns dotProduct to retreive top k images.
+    *  performs dot product between histogram of test image and all training images
     *
-    *  Parameters: * allIndex- Vector containing img index and its weighted histogram value.
-    *              * numOfTrainImg- Total number of images trained.
-    *              * dotProduct[]- Array in which dotProduct is stored.
+    *  Parameters: # allIndex- vector of inverted index.
+    *              # numOfTrainImg- Total number of images trained.
+    *              # dotProduct[]- Array in which dotProduct is stored.
     **/ 
     
     for(int i=0;i<numOfTrainImg;i++)
@@ -226,25 +224,23 @@ void getDotProduct(vector<invertedIndex> allIndex,Mat imgHistogram,const int num
     {
         for (int j=0;j<allIndex[i].imgIndex.size();j++)
         {
-           dotProduct[allIndex[i].imgIndex[j]] +=  imgHistogram.at<float>(0,i) * allIndex[i].weightedHistValue[j];//dotProduct calculation
+           dotProduct[allIndex[i].imgIndex[j]] +=  imgHistogram.at<float>(0,i) * allIndex[i].weightedHistValue[j];
         }
     }  
 }
 
-int argmax(float array[],const int numOfTrainImg)
+int argmax(float array[], const int arraySize)
 {
     /** 
-    *  identifies index which takes largest dotProduct value and it returns the  index value to retrieveTopKImages function.
+    *   implement argmax
     *
-    *   Parameters: * array[]- dotProduct array is passed here to identify largest dotProduct value and its corresponding index.
-    *               * numOfTrainImg- Total number of images trained.
     **/   
   
     int k = 0;
     float max = array[k];
-    for (int i = 0; i < numOfTrainImg; i++)
+    for(int i = 0; i < arraySize; i++)
     {
-        if (array[i] > max) 
+        if(array[i] > max) 
         {
             max = array[i];
             k = i;
@@ -257,13 +253,12 @@ int argmax(float array[],const int numOfTrainImg)
 void retrieveTopKImages(float dotProduct[],const int topKValue,const int numOfTrainImg,int indices[])
 {
     /** 
-    *  retreives top K indices which takes largest dotProduct value and it stores the value to indices array and it returns to 
-    *   identify score value. 
+    *  retreives top K image indices which corresponds to largest dotProduct value
     *
-    *  Parameters: * array[]- dotProduct array is passed here to identify top k  dotProduct value and its corresponding indices.
-    *              * topKValue- number of top values to be considered.
-    *              * numOfTrainImg- Total number of images trained.
-    *              * indices[]- array to which top K indices which is having high dotProduct value is stored.
+    *  Parameters: # dotProduct[]- dotProduct value of each train image BOW histogram with that of test image.
+    *              # topKValue- number of images to be retrieved.
+    *              # numOfTrainImg- number of images used for training.
+    *              # indices[]- indices of K training images which corresponds to largest dotProduct value
     **/   
   
      for(int i=0;i<topKValue;i++)
@@ -271,7 +266,7 @@ void retrieveTopKImages(float dotProduct[],const int topKValue,const int numOfTr
     
     for(int i=0;i<topKValue;i++)
     { 
-        indices[i]=argmax(dotProduct,numOfTrainImg);
+        indices[i] = argmax(dotProduct, numOfTrainImg);
         dotProduct[indices[i]]=-1;
     }   
 }
@@ -400,122 +395,166 @@ int argmax(int array[])
   return k;
 }
 
-int test(char *pathToTestImg,vector<invertedIndex> allIndex,int labels[],char *keyPointsPath,const int numOfTrainImg,const int topKValue)
+int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int labels[], char *keyPointsPath, const int numOfTrainImg, const int topKValue)
 {
     /** 
-    *   detects keypoints , perform grabcut segmentation, computes an image descriptor using the set visual vocabulary,
-    *   following that it calculates dotProduct,retrieve top K images and re-ranking is performed with geometric verification and 
-    *   voting is placed and finally label is calculated.
+    *   This function detects keypoints, remove irrelevant keypoints, then vocabulary assignment to each keypoint and compute BOW histogram for the image.
+    *   Following that it perform inverted index search and then geometrically verify the top K images.
+    *   Finally, voting is done and predicted label is returned.
     *   
-    *   Parameter: * pathToTestImg - path to file containing the image.
-    *              * allIndex- Vector containing img index and its weighted histogram value. 
-    *              * labels[]- array in which label of each train image is stored.
-    *              * keyPointsPath- directory  which contains number of  imgcounts file.
-    *              * numOfTrainImg- Total number of images trained.
-    *              * topKValue- number of top values to be considered.
+    *   Parameter: # pathToTestImg - path to the image.
+    *              # allIndex- vecotr of inverted index.
+    *              # labels[]- annotations of training images
+    *              # keyPointsPath- path to directory containing the keypoints location of each image.
+    *              # numOfTrainImg- number of images used for training.
+    *              # topKValue- number of images to retrieve for geo-metric verification.
     **/
   
-    vector<KeyPoint> keyPoints;
-    vector<vector<int> > pointIdxsOfClusters;
-    Mat imgHistogram;
-    int label;
     Mat img = imread(pathToTestImg,1);
-    printf("\n Reading the image %s",pathToTestImg);
-
+    printf("\nReading : %s",pathToTestImg);
+  
     if(!img.data)
     {
-        printf("\n could not find the image in the path %s",pathToTestImg);
-    }   
+        printf("\nCould not find %s",pathToTestImg);
+        return -3;
+    }
   
-    resize(img,img,Size(480,360));
+    if(img.cols>TEST_WIDTH)
+    {
+        resize(img,img,Size((int)TEST_WIDTH,(int)(img.rows*TEST_WIDTH/img.cols)));
+    }
+
+    if(DISPLAY)
+    {
+        imshow("img", img);
+        waitKey(1);
+    }
+
+    
   
     /******************** grabcut segmentation ********************/
     Mat mask= grabcutSegmentation(img);
   
     /******************** detect keypoints ********************/
     cvtColor(img, img, CV_BGR2GRAY);
-    detector.detect(img, keyPoints);
-    printf("\n Keypoints detected before removing keypoints : %d",keyPoints.size() );
-    if(keyPoints.size()>10)
-        keyPoints= removeKeyPoints(mask,keyPoints);
-    printf("\n Keypoints detected after removing keypoints : %d",keyPoints.size() );
-      
-    bowDE.compute(img, keyPoints,imgHistogram,&pointIdxsOfClusters); //Computes an image histogram using the set visual vocabulary.
-       
+    int clo = clock();
+    vector<KeyPoint> keypoints;
+    detector.detect(img, keypoints);
+    if(keypoints.size() < 100)
+    {
+        return -2;
+    }
+
+    printf("\nkeypoint Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+
+    printf("\n Keypoints detected before removing keypoints : %d", keypoints.size() );
+
+    vector<KeyPoint> keypoints_removed = removeKeyPoints(mask, keypoints);
+    if(keypoints_removed.size() < 100)
+    {
+        swap(keypoints_removed, keypoints);
+    }
+
+    printf("\n Keypoints detected after removing keypoints : %d",keypoints_removed.size() );
+    
+    Mat imgHistogram;
+    vector<vector<int> > pointIdxsOfClusters;
+    
+    clo = clock();
+    bowDE.compute(img, keypoints_removed, imgHistogram, &pointIdxsOfClusters); //Computes an image BOW histogram.
+    printf("\nvocab assignment Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+    
     /******************** calculate dot product *********************/ 
-    float dotProduct[numOfTrainImg];
-    getDotProduct(allIndex,imgHistogram,numOfTrainImg,dotProduct);
-  
+    clo = clock();
+    float *dotProduct = new float[numOfTrainImg];
+    getDotProduct(allIndex, imgHistogram, numOfTrainImg, dotProduct);
+    printf("\ndot Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+    
     /******************** retrieve top K images *********************/
-    int retrievedImages[topKValue];
-    retrieveTopKImages(dotProduct,topKValue,numOfTrainImg,retrievedImages);
+    clo = clock();
+    int *retrievedImages = new int[topKValue];
+    retrieveTopKImages(dotProduct, topKValue, numOfTrainImg, retrievedImages);
+    
+    printf("\narg max Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+
     for(int i=0;i<10;i++)
-        printf("\n indices=%d",retrievedImages[i]);
+        printf("\nIndices=%d", retrievedImages[i]);
   
     /******************* Rerank using geometric verification **********************/
-    int geoScore[topKValue];
-    rerankUsingGeometryVerification(retrievedImages,topKValue,pointIdxsOfClusters,keyPoints,keyPointsPath,geoScore);
+    int *geoScore = new int[topKValue];
+    rerankUsingGeometryVerification(retrievedImages,topKValue, pointIdxsOfClusters, keypoints_removed, keyPointsPath, geoScore);
     for(int i=0;i<topKValue;i++)
-        printf("\n score=%d",geoScore[i]);
+        printf("\nScore=%d", geoScore[i]);
  
     /******************** vote *********************/
-    int vote[6];
-    getVote(geoScore,topKValue,labels,retrievedImages,vote);
+    int vote[6]={0};
+    getVote(geoScore, topKValue, labels, retrievedImages, vote);
     for(int i=0;i<6;i++)
         printf("\n vote[%d]=%d",i,vote[i]);
    
     /******************** label *********************/
-    label= argmax(vote);
-   
+    int label= argmax(vote);
+    
+    delete[] dotProduct;
+    delete[] retrievedImages;
+    delete[] geoScore;
+    
     return label;
 }
 
-void readFiles(char *pathToFile,vector<invertedIndex> allIndex,int labels[],char *keyPointsPath,const int numOfTrainImg,const int topKValue)
+void readFiles(char *pathToTxtFile, vector<invertedIndex> &allIndex, int labels[], char *keyPointsPath, const int numOfTrainImg, const int topKValue)
 {
-  /** 
-  *   read files containing the full path of the images and calculates label of each image and finally accuracy is calculated.
-  *   
-  *   Parameter: * pathToFile - path to file containing full path of the images.
-  *              * allIndex- Vector containing img index and its weighted histogram value. 
-  *              * labels[]- array in which label of each train image is stored.
-  *              * keyPointsPath- directory  which contains number of  imgcounts file.
-  *              * numOfTrainImg- Total number of images trained.
-  *              * topKValue- number of top values to be considered.
-  **/
-  
-  char fileName[200];
-  int label;
-  int numOfLabelsCrct=0;
-  int totNumOfImgs=0;
-  float accuracy;
-  FILE *filePointer;
-  char pathToTestImg[200];
-  char files[6][30]={"ten","twenty","fifty","hundred","fivehundred","thousand"};
-  for(int i=0;i<6;i++)
-  {	
-     sprintf(fileName,"%s/%s.txt",pathToFile,files[i]);
-     filePointer=fopen(fileName,"r");//read the ith file
-     printf("\n file %d :%s",i,fileName);
-     if(filePointer==NULL)
-     {
-       printf("\n File %s not found",files[i]);
-       continue;
-     }
-     while(!feof(filePointer) )
-     {          
-       fscanf(filePointer,"%s",pathToTestImg);//read images in ith file    
-       label = test(pathToTestImg,allIndex,labels,keyPointsPath,numOfTrainImg,topKValue);
-       totNumOfImgs++;
-       printf("\n label=%d",label);
-       if(label==i)
-         numOfLabelsCrct++;
-     }
-  }     
-           
-  /******************** accuracy *********************/  
-  printf("\ntotNumOfImgs=%d",  totNumOfImgs);
-  printf("numOfLabelCrct=%d",numOfLabelsCrct);
-  accuracy =  ((float)numOfLabelsCrct/numOfTestImgs );
-  accuracy=accuracy*100.0;
-  printf("\n accuracy= %f",accuracy);
+    /** 
+    *   read image and call testCurrency function to identify the denomination of thr bill in the image.
+    *   Also calculate accuracy and other statistics.
+    *
+    *   Parameter: # pathToTxtFile- path to directory containing the text files
+    *              # allIndex- vecotr of inverted index.
+    *              # labels[]- annotations of training images
+    *              # keyPointsPath- path to directory containing the keypoints location of each image.
+    *              # numOfTrainImg- number of images used for training.
+    *              # topKValue- number of images to retrieve for geo-metric verification.
+    **/
+    if(DISPLAY)
+    {
+        namedWindow("img", WINDOW_NORMAL );
+    }
+
+    int imgCounter=0;
+    int numCorrect=0;
+
+    for(int i=0;i<6;i++)
+    {
+        char txtFileName[200];
+        sprintf(txtFileName,"%s/%s.txt", pathToTxtFile, txtFiles[i]);
+        FILE *filePointer = fopen(txtFileName,"r");
+        printf("\n*******************************************************************");
+        printf("\nReading %s", txtFileName);
+     
+        if(filePointer==NULL)
+        {
+            printf("\nERROR..!! File '%s' not found", txtFileName);
+            break;
+        }
+     
+        while(!feof(filePointer))
+        {
+            char pathToImage[500];
+            fscanf(filePointer,"%s",pathToImage);
+
+            int clo = clock();
+            int label = testCurrency(pathToImage, allIndex, labels, keyPointsPath, numOfTrainImg, topKValue);
+            printf("\nLabel = %d", label);
+            printf("\nTime = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);
+            if(label==i)
+                numCorrect++;
+
+            imgCounter++;
+        }
+    }     
+
+    printf("\nTotal images read : %d", imgCounter);
+    printf("\nTotal correct predicted : %d", numCorrect);
+    printf("\nAccuracy = %f", (float)numCorrect/imgCounter);
+
 }
