@@ -12,7 +12,7 @@ The code is divided into 2 parts
 
 (provided script assume JPEG image. For other type of image the user is required to properly modify the scripy 'run.sh' for training as well as test code.)
 
-----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------
 
 1. Training code - In directory 'currency_train' there are 4 files
     (a) currency.cpp - implementation training part of Currency Recognition on Mobile Phones paper.
@@ -50,7 +50,7 @@ Once the code finishes, it create a directory 'currency_train_output' with follo
   ------ indicesSize.txt
   ------ dataFile.txt
 
-----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------
 
 2. Test code - In directory 'currency_IR' there are 3 files
     (a) testCurrency.cpp - implements the retrieval and recognition part of Currency Recognition on Mobile Phones paper.
@@ -81,7 +81,8 @@ Once the code finishes, it output the results like classification accuracy and a
 
 NOTE - In order to predict label one by onem the user need to make changes in test code. Call testCurrency() function with path to image as argument. Compile and run to get the predicted label.
 
-----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------
+
 To manually compile the train code
 
 $ g++ `pkg-config --cflags --libs opencv` currency.cpp -o currency-train -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_objdetect -lopencv_nonfree -lopencv_features2d -lopencv_flann;
