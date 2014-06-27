@@ -285,7 +285,8 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
     *              * keyPointsPath- path to directory that contains keypoint location of training images.
     *              * geoScore[]- array to which calculated score is stored. This score is number of keypoints in retreived images that are geometrically consistent with test image.
     **/   
-  
+    
+    
     for(int i=0; i<topKValue; i++)
     { 
         geoScore[i]=0;
@@ -293,9 +294,8 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
         char keyPointsFile[200];
         sprintf(keyPointsFile,"%s/%d.txt",keyPointsPath,retrievedImages[i]);
 
-        FILE *keyPointsFilePointer;
-        keyPointsFilePointer= fopen(keyPointsFile,"r");
-        int vocabularyId=-1,x=-1,y=-1;
+        FILE *keyPointsFilePointer = fopen(keyPointsFile,"r");
+        
         
         if(keyPointsFilePointer==NULL)
         {
@@ -306,18 +306,21 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
         for(int j=0;j<pointIdxsOfClusters.size();j++)
         {    
             fseek ( keyPointsFilePointer , 0 , SEEK_SET );
+
             for(int k=0;k<pointIdxsOfClusters[j].size();k++)
             {
                 if(feof(keyPointsFilePointer))
 	            {
 	                break;
 	            }
-	           Mat temp=Mat(1,2,CV_32F);
-               temp.at<float>(0,0)=keypoints[pointIdxsOfClusters[j][k]].pt.x;
-               temp.at<float>(0,1)=keypoints[pointIdxsOfClusters[j][k]].pt.y;
-               while(!feof(keyPointsFilePointer))
-               {
-                    fscanf(keyPointsFilePointer,"%d\t%d\t%d",&vocabularyId,&x,&y); 
+	            
+                Mat temp=Mat(1,2,CV_32F);
+                temp.at<float>(0,0)=keypoints[pointIdxsOfClusters[j][k]].pt.x;
+                temp.at<float>(0,1)=keypoints[pointIdxsOfClusters[j][k]].pt.y;
+                int vocabularyId=-1,x=-1,y=-1;
+                while(!feof(keyPointsFilePointer))
+                {
+                    fscanf(keyPointsFilePointer,"%d%d%d",&vocabularyId,&x,&y); 
           
                     if(vocabularyId>j)
                     {
@@ -331,10 +334,16 @@ void rerankUsingGeometryVerification(int retrievedImages[],const int topKValue,v
                         temp2.at<float>(0,1)=y;
                         pointInTestImg.push_back(temp);
                         pointInRetreivedImg.push_back(temp2);
-                        // break;
+                        break;
                     }
                 }
+                
+                if(vocabularyId>j)
+                {
+                    break;
+                }
             }
+            
         }
         fclose(keyPointsFilePointer);
    
@@ -439,7 +448,7 @@ int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int label
     detector.detect(img, keypoints);
     if(keypoints.size() < 100)
     {
-        return -2;
+        return -2; //reject this image
     }
 
     printf("\nkeypoint Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
@@ -495,6 +504,11 @@ int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int label
     /******************** label *********************/
     int label= argmax(vote);
     
+    if(vote[label] < 50)
+    {
+        return -1; //doubtful case
+    }
+
     delete[] dotProduct;
     delete[] retrievedImages;
     delete[] geoScore;
