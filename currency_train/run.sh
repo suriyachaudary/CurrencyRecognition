@@ -28,7 +28,7 @@ for f in $1/hundred/*.jpg; do echo $f;done > train_files/hundred.txt
 for f in $1/fivehundred/*.jpg; do echo $f;done > train_files/fivehundred.txt
 for f in $1/thousand/*.jpg; do echo $f;done > train_files/thousand.txt
 
-g++ -std=c++0x `pkg-config --cflags --libs opencv` currency.cpp -o currency-train -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_objdetect -lopencv_nonfree -lopencv_features2d -lopencv_flann;
+g++ `pkg-config --cflags --libs opencv` currency.cpp -o currency-train -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_objdetect -lopencv_nonfree -lopencv_features2d -lopencv_flann;
 ./currency-train train_files/ $vocabSize $numImagesToTrain
 
 mv keypoints currency_train_output/ ;

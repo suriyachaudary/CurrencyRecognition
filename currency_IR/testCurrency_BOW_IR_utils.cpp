@@ -144,9 +144,9 @@ Mat grabcutSegmentation(Mat &input)
     Rect rectangle(5,5,img.cols-10,img.rows-10);
     Mat mask; 
     Mat bgModel,fgModel; 
-    bgModel=Mat(), fgModel=Mat();//initialize  mat
+    bgModel=Mat(), fgModel=Mat();
       
-    grabCut(img,mask,rectangle,bgModel,fgModel,1,GC_INIT_WITH_RECT); //perform grabcut algorithm
+    grabCut(img,mask,rectangle,bgModel,fgModel,1,GC_INIT_WITH_RECT); 
       
     for(int i=0;i<mask.rows;i++)
     {

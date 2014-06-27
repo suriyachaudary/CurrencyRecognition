@@ -391,10 +391,10 @@ void writeToBinaryFile(vector<invertedIndex> allIndex , char *fileName)
      
         for(int j=0;j<allIndex[i].imgIndex.size();j++)
         {
-            int a = allIndex[i].imgIndex[j];
-            float b = allIndex[i].weightedHistValue[j];
-            binaryFile.write((char *)&a,4) ;
-            binaryFile.write((char *)&b,4) ;
+            int imgIndex = allIndex[i].imgIndex[j];
+            float weightedHistValue = allIndex[i].weightedHistValue[j];
+            binaryFile.write((char *)&imgIndex,sizeof(imgIndex)) ;
+            binaryFile.write((char *)&weightedHistValue,sizeof(weightedHistValue)) ;
         }
     }
   
