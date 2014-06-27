@@ -18,7 +18,11 @@ The code is divided into 2 parts
     (a) currency.cpp - implementation training part of Currency Recognition on Mobile Phones paper.
     (b) train_BOW_IR_utils.cpp - utility functions for performing Bag of Word retrieval.
     (c) global.h - global variables and parameters are defined here.
-    (d) run.sh - bash script that (0) set vocabulary size and number of training images to be used for training (i) scan training directory and                   create a class-wise list of training images. (ii) compile and run the code. (iii) place all necessary files into directory                      'currency_train_output' and (iv) remove temporary files.
+    (d) run.sh - bash script that
+                 (0) set vocabulary size and number of training images to be used for training
+                 (i) scan training directory and create a class-wise list of training images. 
+                 (ii) compile and run the code. (iii) place all necessary files into directory 'currency_train_output' and
+                 (iv) remove temporary files.
 
 'training directory' should have directory structure
 base_directory
