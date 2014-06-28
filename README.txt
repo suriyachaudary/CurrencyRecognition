@@ -84,7 +84,8 @@ $ sh run.sh 'path to directory containing training output' 'path to directory co
 e.g.
 $ sh run.sh ../currency_train/currency_train_output/ /home/bond/currency_dataset/test_images/
 
-Once the code finishes, it output the results like classification accuracy and average time.
+The code output label for each test image, time taken to detect keypoints, assign vocabulary, do inverted index search , perform geometric verification as well as total time.
+Once, every image has been processed, it output the classification accuracy.
 
 NOTE - In order to predict label one by onem the user need to make changes in test code. Call testCurrency() function with path to image as argument. Compile and run to get the predicted label.
 
