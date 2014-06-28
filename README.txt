@@ -1,3 +1,7 @@
+Currency Recognition on Mobile Phones
+=====================================
+
+
 This code is implementation of the paper : 
 Suriya Singh, Shushman Choudhury, Kumar Vishal and C.V. Jawahar. "Currency Recognition on Mobile Phones". Proceedings of the 22nd International Conference on Pattern Recognition, 24-28 Aug 2014, Stockholm, Sweden. 
 
