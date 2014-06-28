@@ -58,6 +58,11 @@ int main(int argc,char **argv)
     printf("\nNumber of images to retrieve for geo-metric verification : %d", topKValue);
     printf("\nTotal time to read data : %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
     /******************** identifying labels ********************/
+
+    // single image, pass path to image as 1st argument
+    //int label =  testCurrency(argv[8], allIndex, labels, argv[7], (const int)numOfTrainImg, (const int)topKValue);
+
+    // in batch, pass path of list of images as 1st argument
     readFiles(argv[8], allIndex, labels, argv[7], (const int)numOfTrainImg, (const int)topKValue);
     
     delete[] labels;

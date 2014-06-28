@@ -222,6 +222,7 @@ void getDotProduct(vector<invertedIndex> &allIndex, Mat &imgHistogram, const int
     
     for(int i=0;i<imgHistogram.cols;i++)
     {
+	
         for (int j=0;j<allIndex[i].imgIndex.size();j++)
         {
            dotProduct[allIndex[i].imgIndex[j]] +=  imgHistogram.at<float>(0,i) * allIndex[i].weightedHistValue[j];
@@ -417,11 +418,10 @@ int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int label
     **/
   
     Mat img = imread(pathToTestImg,1);
-    printf("\nReading : %s",pathToTestImg);
-  
+
     if(!img.data)
     {
-        printf("\nCould not find %s",pathToTestImg);
+        printf("\tCould not find %s",pathToTestImg);
         return -3;
     }
   
@@ -451,9 +451,7 @@ int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int label
         return -2; //reject this image
     }
 
-    printf("\nkeypoint Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
-
-    printf("\n Keypoints detected before removing keypoints : %d", keypoints.size() );
+    printf("\t%f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
 
     vector<KeyPoint> keypoints_removed = removeKeyPoints(mask, keypoints);
     if(keypoints_removed.size() < 100)
@@ -461,45 +459,32 @@ int testCurrency(char *pathToTestImg, vector<invertedIndex> &allIndex, int label
         swap(keypoints_removed, keypoints);
     }
 
-    printf("\n Keypoints detected after removing keypoints : %d",keypoints_removed.size() );
-    
     Mat imgHistogram;
     vector<vector<int> > pointIdxsOfClusters;
     
     clo = clock();
     bowDE.compute(img, keypoints_removed, imgHistogram, &pointIdxsOfClusters); //Computes an image BOW histogram.
-    printf("\nvocab assignment Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+    printf("\t%f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
     
     /******************** calculate dot product *********************/ 
     clo = clock();
     float *dotProduct = new float[numOfTrainImg];
     getDotProduct(allIndex, imgHistogram, numOfTrainImg, dotProduct);
-    printf("\ndot Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+    printf("\t%f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
     
     /******************** retrieve top K images *********************/
-    clo = clock();
     int *retrievedImages = new int[topKValue];
     retrieveTopKImages(dotProduct, topKValue, numOfTrainImg, retrievedImages);
     
-    printf("\narg max Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
-
-    for(int i=0;i<10;i++)
-        printf("\nIndices=%d", retrievedImages[i]);
-  
     /******************* Rerank using geometric verification **********************/
     clo = clock();
     int *geoScore = new int[topKValue];
     rerankUsingGeometryVerification(retrievedImages,topKValue, pointIdxsOfClusters, keypoints_removed, keyPointsPath, geoScore);
-    printf("\ngeo Time = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
+    printf("\t%f", (float)(clock()-clo)/CLOCKS_PER_SEC);   
 
-    for(int i=0;i<topKValue;i++)
-        printf("\nScore=%d", geoScore[i]);
- 
     /******************** vote *********************/
     int vote[6]={0};
     getVote(geoScore, topKValue, labels, retrievedImages, vote);
-    for(int i=0;i<6;i++)
-        printf("\n vote[%d]=%d",i,vote[i]);
    
     /******************** label *********************/
     int label= argmax(vote);
@@ -536,15 +521,14 @@ void readFiles(char *pathToTxtFile, vector<invertedIndex> &allIndex, int labels[
 
     int imgCounter=0;
     int numCorrect=0;
+    printf("\nPath\tdetect_keypoints\tassign_vocab\tinv_index_search\trerank_geo\ttrue_label\tpredicted_label\ttotal_time");
 
     for(int i=0;i<6;i++)
     {
         char txtFileName[200];
         sprintf(txtFileName,"%s/%s.txt", pathToTxtFile, txtFiles[i]);
         FILE *filePointer = fopen(txtFileName,"r");
-        printf("\n*******************************************************************");
-        printf("\nReading %s", txtFileName);
-     
+
         if(filePointer==NULL)
         {
             printf("\nERROR..!! File '%s' not found", txtFileName);
@@ -554,22 +538,20 @@ void readFiles(char *pathToTxtFile, vector<invertedIndex> &allIndex, int labels[
         while(!feof(filePointer))
         {
             char pathToImage[500];
-            fscanf(filePointer,"%s",pathToImage);
-
+            fscanf(filePointer,"%s", pathToImage);
+            printf("\n%s", pathToImage);
             int clo = clock();
             int label = testCurrency(pathToImage, allIndex, labels, keyPointsPath, numOfTrainImg, topKValue);
-            printf("\nLabel = %d", label);
-            printf("\nTime = %f", (float)(clock()-clo)/CLOCKS_PER_SEC);
+            printf("\t%d\t%d",i, label);
+            printf("\t%f", (float)(clock()-clo)/CLOCKS_PER_SEC);
             if(label==i)
                 numCorrect++;
 
             imgCounter++;
-            printf("\nAccuracy = %f", (float)numCorrect/imgCounter);
         }
     }     
 
     printf("\nTotal images read : %d", imgCounter);
     printf("\nTotal correct predicted : %d", numCorrect);
     printf("\nAccuracy = %f", (float)numCorrect/imgCounter);
-
 }
