@@ -8,6 +8,11 @@ Suriya Singh, Shushman Choudhury, Kumar Vishal and C.V. Jawahar. "Currency Recog
 Project Page :
 http://researchweb.iiit.ac.in/~suriya.singh/Currency2014ICPR/Currency2014ICPR.html
 
+Code contributors : 
+1. Suriya : singh.suriya@gmail.com
+2. Shushman : shushmanchoudhury@gmail.com
+3. Abinaya : sabinayavasan@gmail.com
+
 
 The code is divided into 2 parts
     
